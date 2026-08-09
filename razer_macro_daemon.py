@@ -34,9 +34,9 @@ DEBUG = False  # True -> логировать, что именно впрыск�
 # Код кнопки (байт[1] репорта) -> действие. Коды: M-кнопки шлют 0x20..0x24.
 def MACRO_ACTIONS():
     return {
-        0x20: lambda: send_keys("^+{PRINTSCREEN}"),  # M1 -> Ctrl+Shift+PrtScrn
-        0x22: lambda: send_keys("{PRINTSCREEN}"),    # M3 -> PrtScrn
-        0x24: lambda: send_keys("#+s"),  # -> Win+Shift+S (системная «ножница»)
+        0x24: lambda: send_keys("^+{PRINTSCREEN}"),  # M1 (нижняя) -> Ctrl+Shift+PrtScrn
+        0x22: lambda: send_keys("{PRINTSCREEN}"),    # M3 (середина) -> PrtScrn
+        0x20: lambda: send_keys("#+s"),  # M5 (верхняя) -> Win+Shift+S («ножница»)
     }
 # ────────────────────────────────────────────────────────────────────────
 
