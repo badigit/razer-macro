@@ -1,6 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-razer_macro_daemon.log
+build/
+dist/
+*.log
 STOP
 ty.toml
+config.toml
