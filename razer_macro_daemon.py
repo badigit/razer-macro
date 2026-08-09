@@ -108,8 +108,24 @@ def _send(inputs):
     return sent
 
 
+# Клавиши расширенного набора: в железе идут с префиксом E0. Часть приёмников
+# хоткеев (низкоуровневые хуки, RegisterHotKey у некоторых программ) сверяет
+# флаг и игнорирует нажатие без него.
+EXTENDED_VKS = {
+    0x2C,  # PRINTSCREEN
+    0x2D, 0x2E,  # INSERT, DELETE
+    0x24, 0x23, 0x21, 0x22,  # HOME, END, PGUP, PGDN
+    0x25, 0x26, 0x27, 0x28,  # ←, ↑, →, ↓
+    0x5B, 0x5C,  # LWIN, RWIN
+    0x90, 0x6F,  # NUMLOCK, NUMPAD DIVIDE
+}
+
+
 def _vk_input(vk, up=False):
-    ki = KEYBDINPUT(vk, 0, KEYEVENTF_KEYUP if up else 0, 0, 0)
+    flags = KEYEVENTF_KEYUP if up else 0
+    if vk in EXTENDED_VKS:
+        flags |= KEYEVENTF_EXTENDEDKEY
+    ki = KEYBDINPUT(vk, 0, flags, 0, 0)
     return INPUT(INPUT_KEYBOARD, _INPUTunion(ki=ki))
 
 
