@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 razer_macro_daemon.log
 STOP
+ty.toml
