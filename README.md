@@ -23,14 +23,13 @@ listen for macro-key reports, inject keystrokes via `SendInput`.
    it anywhere — `%LOCALAPPDATA%\Programs\razer-macro` is a good spot.
 2. Run `razer-macro.exe`. It lands in the tray and writes a `config.toml`
    next to itself on first start.
-3. Optional autostart:
+3. Autostart: tick **Start with Windows** in the tray menu, or run
+   `razer-macro.exe --install` (`--uninstall` to undo).
 
-```
-razer-macro.exe --install
-```
-
-That writes one value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-No admin rights, no scheduled task, no startup shortcut. `--uninstall` removes it.
+Either way it writes one value under
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run` — no admin rights, no
+scheduled task, no startup shortcut. The tray checkbox reads the registry every
+time the menu opens, so it always shows the real state.
 
 **Close or uninstall Synapse first** — two programs cannot own the device at once.
 

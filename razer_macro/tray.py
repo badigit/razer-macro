@@ -30,6 +30,7 @@ NIF_TIP = 0x04
 MF_STRING = 0x0000
 MF_SEPARATOR = 0x0800
 MF_GRAYED = 0x0001
+MF_CHECKED = 0x0008
 TPM_RIGHTBUTTON = 0x0002
 TPM_RETURNCMD = 0x0100
 
@@ -159,7 +160,12 @@ def _make_icon(size=32):
 
 
 class Tray:
-    """Меню в трее. `items` — список (подпись, callback|None); None = пункт-заголовок."""
+    """Меню в трее.
+
+    `items` — список кортежей (подпись, callback|None[, галочка]). callback=None
+    делает пункт неактивным заголовком, подпись "-" — разделителем, а третий
+    элемент (bool или функция) рисует галочку.
+    """
 
     def __init__(self, tooltip, items, on_quit):
         self.items = items
@@ -204,11 +210,19 @@ class Tray:
 
     def _show_menu(self):
         menu = user32.CreatePopupMenu()
-        for i, (label, cb) in enumerate(self.items):
+        for i, item in enumerate(self.items):
+            label, cb = item[0], item[1]
+            # третий элемент — состояние галочки: bool или функция, которую
+            # спрашиваем на каждом открытии меню, чтобы показать актуальное
+            checked = item[2] if len(item) > 2 else None
+            if callable(checked):
+                checked = checked()
             if label == "-":
                 user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
             else:
                 flags = MF_STRING | (0 if cb else MF_GRAYED)
+                if checked:
+                    flags |= MF_CHECKED
                 user32.AppendMenuW(menu, flags, i + 1, label)
         user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
         user32.AppendMenuW(menu, MF_STRING, self._quit_id, "Выход")
@@ -223,7 +237,7 @@ class Tray:
         if cmd == self._quit_id:
             self.stop()
         elif cmd:
-            _, callback = self.items[cmd - 1]
+            callback = self.items[cmd - 1][1]
             if callback:
                 callback()
 

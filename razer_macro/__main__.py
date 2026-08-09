@@ -145,7 +145,7 @@ def cmd_list():
     return 0
 
 
-def build_menu(conf, on_reload, on_edit):
+def build_menu(conf, on_reload, on_edit, on_toggle_autostart):
     items = [(f"Конфиг: {os.path.basename(conf.path)}", None)]
     for name, spec in conf.raw_binds.items():
         code = cfg.resolve_code(name)
@@ -153,6 +153,9 @@ def build_menu(conf, on_reload, on_edit):
     items.append(("-", None))
     items.append(("Открыть конфиг", on_edit))
     items.append(("Перечитать конфиг", on_reload))
+    items.append(("-", None))
+    items.append(("Запускать при входе в систему", on_toggle_autostart,
+                  lambda: autostart.status() is not None))
     return items
 
 
@@ -182,18 +185,30 @@ def run_tray(conf, log, debug, console):
             return
         state["conf"] = fresh
         macro.reload_config(fresh)
-        icon.set_items(build_menu(fresh, on_reload, on_edit))
+        icon.set_items(build_menu(fresh, on_reload, on_edit, on_toggle_autostart))
         icon.set_tooltip(tooltip_for(fresh))
         log(f"Конфиг перечитан: {len(fresh.binds)} биндов")
 
     def on_edit():
         subprocess.Popen(["notepad.exe", state["conf"].path])
 
+    def on_toggle_autostart():
+        try:
+            if autostart.status() is not None:
+                autostart.uninstall()
+                log("Автозапуск выключен.")
+            else:
+                log(f"Автозапуск включён: {autostart.install()}")
+        except OSError as e:
+            message_box(f"Не удалось изменить автозапуск:\n{e}", flags=MB_ICONERROR)
+
     def on_quit():
         macro.stop()
         worker.join(timeout=3)
 
-    icon = tray.Tray(tooltip_for(conf), build_menu(conf, on_reload, on_edit), on_quit)
+    icon = tray.Tray(tooltip_for(conf),
+                     build_menu(conf, on_reload, on_edit, on_toggle_autostart),
+                     on_quit)
     icon.add_timer(TIMER_TRIM, TRIM_PERIOD_MS, trim_working_set)
 
     gc.collect()
