@@ -150,6 +150,13 @@ understood from the [OpenRazer](https://github.com/openrazer/openrazer) project.
 No OpenRazer code is used here; this is an independent implementation. Thanks to
 its authors for documenting the hardware.
 
+## Trademarks
+
+This is an independent, unofficial project. It is **not affiliated with,
+endorsed by, or supported by Razer Inc.** "Razer", "BlackWidow" and "Synapse"
+are trademarks of Razer Inc., used here only to describe which hardware this
+software works with. No Razer artwork, logo or branding is included.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
