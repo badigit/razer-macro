@@ -69,6 +69,10 @@ class INPUT(ctypes.Structure):
 
 user32.SendInput.argtypes = (wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int)
 user32.SendInput.restype = wintypes.UINT
+user32.MapVirtualKeyW.argtypes = (wintypes.UINT, wintypes.UINT)
+user32.MapVirtualKeyW.restype = wintypes.UINT
+
+MAPVK_VK_TO_VSC = 0
 
 
 def _send(inputs, log=None):
@@ -84,18 +88,72 @@ def _vk_input(vk, up=False):
     flags = KEYEVENTF_KEYUP if up else 0
     if vk in EXTENDED_VKS:
         flags |= KEYEVENTF_EXTENDEDKEY
-    return INPUT(INPUT_KEYBOARD, _INPUTunion(ki=KEYBDINPUT(vk, 0, flags, 0, 0)))
+    # сканкод в событии: у физического нажатия он всегда есть, и часть
+    # приёмников (хуки, игры) событие без сканкода игнорирует
+    scan = user32.MapVirtualKeyW(vk, MAPVK_VK_TO_VSC)
+    return INPUT(INPUT_KEYBOARD, _INPUTunion(ki=KEYBDINPUT(vk, scan, flags, 0, 0)))
 
 
 class UnknownKey(ValueError):
     pass
 
 
+# VK физических клавиш для знаков, у которых код не выводится из ord(символа)
+# (клавиши OEM-блока US-раскладки)
+_OEM_VK = {
+    " ": 0x20, "`": 0xC0, "-": 0xBD, "=": 0xBB, "[": 0xDB, "]": 0xDD, "\\": 0xDC,
+    ";": 0xBA, "'": 0xDE, ",": 0xBC, ".": 0xBE, "/": 0xBF,
+}
+# Shift-варианты тех же клавиш: хоткей — про клавишу, а не про символ
+_OEM_SHIFTED = {
+    "~": "`", "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";",
+    '"': "'", "<": ",", ">": ".", "?": "/",
+    "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7",
+    "*": "8", "(": "9", ")": "0",
+}
+# ЙЦУКЕН: буква -> латинская буква на той же физической клавише. Бинды с
+# кириллицей тоже не зависят от активной раскладки («й» жмёт клавишу Q и т.д.)
+_CYRILLIC_TO_US = {
+    "ё": "`", "й": "q", "ц": "w", "у": "e", "к": "r", "е": "t", "н": "y",
+    "г": "u", "ш": "i", "щ": "o", "з": "p", "х": "[", "ъ": "]",
+    "ф": "a", "ы": "s", "в": "d", "а": "f", "п": "g", "р": "h", "о": "j",
+    "л": "k", "д": "l", "ж": ";", "э": "'",
+    "я": "z", "ч": "x", "с": "c", "м": "v", "и": "b", "т": "n", "ь": "m",
+    "б": ",", "ю": ".",
+}
+
+
+def _char_vk(ch):
+    """VK физической клавиши по символу — без участия активной раскладки.
+
+    Латиница, цифры, знаки US-раскладки и кириллица (через ЙЦУКЕН) резолвятся
+    по позиции клавиши, поэтому хоткей срабатывает при любой раскладке.
+    VkKeyScanW остаётся для символов вне обеих таблиц (например, украинских) —
+    те зависят от раскладки.
+    """
+    c = ch.lower()
+    if "a" <= c <= "z":
+        return 0x41 + ord(c) - ord("a")
+    if "0" <= c <= "9":
+        return ord(c)
+    if c in _OEM_VK:
+        return _OEM_VK[c]
+    if c in _OEM_SHIFTED:
+        return _char_vk(_OEM_SHIFTED[c])
+    if c in _CYRILLIC_TO_US:
+        return _char_vk(_CYRILLIC_TO_US[c])
+    sc = user32.VkKeyScanW(ord(ch))
+    if sc == -1:
+        raise UnknownKey(f"символ {ch!r} не набирается в текущей раскладке")
+    return sc & 0xFF
+
+
 def parse_spec(spec: str):
     """'^+{PRINTSCREEN}' -> (['CTRL','SHIFT'], [0x2C]). Валидирует на этапе разбора.
 
-    Модификаторы в начале: ^=Ctrl !=Alt +=Shift #=Win. {NAME} — клавиша из VK,
-    остальные символы резолвятся через раскладку (VkKeyScanW).
+    Модификаторы в начале: ^=Ctrl !=Alt +=Shift #=Win. {NAME} — клавиша из VK.
+    Латиница, цифры, знаки и кириллица (через ЙЦУКЕН) резолвятся в физическую
+    клавишу — независимо от активной раскладки; остальное — через VkKeyScanW.
     """
     mods, i = [], 0
     while i < len(spec) and spec[i] in MOD_MAP:
@@ -113,10 +171,7 @@ def parse_spec(spec: str):
             vks.append(VK[name])
             j = end + 1
         else:
-            sc = user32.VkKeyScanW(ord(rest[j]))
-            if sc == -1:
-                raise UnknownKey(f"символ {rest[j]!r} не набирается в текущей раскладке")
-            vks.append(sc & 0xFF)
+            vks.append(_char_vk(rest[j]))
             j += 1
     if not vks and not mods:
         raise UnknownKey(f"пустая комбинация {spec!r}")

@@ -54,7 +54,9 @@ M5 = "#+s"               # Win+Shift+S
 
 Modifiers go at the front: `^` Ctrl, `!` Alt, `+` Shift, `#` Win.
 Named keys go in braces — `{PRINTSCREEN}`, `{F13}`, `{VOLUME_UP}`, `{DELETE}`,
-arrows, media keys; anything else is typed as a literal character.
+arrows, media keys. Latin letters, digits and signs resolve to the physical
+key (US layout); Cyrillic letters map through ЙЦУКЕН (й = the Q key), so
+hotkeys fire no matter which keyboard layout is active.
 
 ### Key numbering is mirrored
 
